@@ -9,14 +9,6 @@ Node.js scripts to interact with the [Organizze API](https://github.com/organizz
 - Node.js >= 18.0.0
 - An [Organizze](https://app.organizze.com.br) account with an API token
 
-## Installation
-
-```bash
-git clone <repo>
-cd organizze-skill
-npm install
-```
-
 ## Configuration
 
 ```bash
