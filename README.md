@@ -1,4 +1,4 @@
-# organizze-skill
+# Organizze Skill
 
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 [![The Claw is The law](https://img.shields.io/badge/%F0%9F%A6%9E-The%20Claw%20is%20The%20law-2ea44f?style=flat-square)](https://github.com/openclaw/openclaw)
