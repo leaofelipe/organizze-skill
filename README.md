@@ -2,14 +2,14 @@
 
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
-Scripts Node.js para interagir com a [API do Organizze](https://github.com/organizze/api-doc). Cada recurso tem seu proprio script executavel direto no terminal.
+Node.js scripts to interact with the [Organizze API](https://github.com/organizze/api-doc). Each resource has its own script executable directly from the terminal.
 
-## Requisitos
+## Requirements
 
 - Node.js >= 18.0.0
-- Conta no [Organizze](https://app.organizze.com.br) com token de acesso
+- An [Organizze](https://app.organizze.com.br) account with an API token
 
-## Instalacao
+## Installation
 
 ```bash
 git clone <repo>
@@ -17,59 +17,59 @@ cd organizze-skill
 npm install
 ```
 
-## Configuracao
+## Configuration
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o `.env` com suas credenciais:
+Edit `.env` with your credentials:
 
 ```env
-ORGANIZZE_EMAIL=seu@email.com
-ORGANIZZE_TOKEN=seu_token_de_acesso
-ORGANIZZE_USER_AGENT=organizze-skill (seu@email.com)
+ORGANIZZE_EMAIL=your@email.com
+ORGANIZZE_TOKEN=your_access_token
+ORGANIZZE_USER_AGENT=organizze-skill (your@email.com)
 ```
 
-O token de acesso esta disponivel em [app.organizze.com.br/configuracoes/api-keys](https://app.organizze.com.br/configuracoes/api-keys).
+Your API token is available at [app.organizze.com.br/configuracoes/api-keys](https://app.organizze.com.br/configuracoes/api-keys).
 
-## Uso
+## Usage
 
-### Contas bancarias
+### Accounts
 
 ```bash
 node src/routes/accounts.js list
 node src/routes/accounts.js get <id>
 node src/routes/accounts.js create '{"name":"Itau CC","type":"checking"}'
-node src/routes/accounts.js update <id> '{"name":"Itau Poupanca"}'
+node src/routes/accounts.js update <id> '{"name":"Itau Savings"}'
 node src/routes/accounts.js delete <id>
 ```
 
-### Categorias
+### Categories
 
 ```bash
 node src/routes/categories.js list
 node src/routes/categories.js get <id>
-node src/routes/categories.js create '{"name":"Alimentacao"}'
-node src/routes/categories.js update <id> '{"name":"Mercado"}'
+node src/routes/categories.js create '{"name":"Groceries"}'
+node src/routes/categories.js update <id> '{"name":"Supermarket"}'
 node src/routes/categories.js delete <id>
 node src/routes/categories.js delete <id> '{"replacement_id":5}'
 ```
 
-### Movimentacoes
+### Transactions
 
 ```bash
 node src/routes/transactions.js list
 node src/routes/transactions.js list --start-date=2026-04-01 --end-date=2026-04-30
 node src/routes/transactions.js list --account-id=<id>
 node src/routes/transactions.js get <id>
-node src/routes/transactions.js create '{"description":"Mercado","amount_cents":-5000,"date":"2026-04-03","paid":true}'
-node src/routes/transactions.js update <id> '{"description":"Mercado atualizado"}'
+node src/routes/transactions.js create '{"description":"Supermarket","amount_cents":-5000,"date":"2026-04-03","paid":true}'
+node src/routes/transactions.js update <id> '{"description":"Updated description"}'
 node src/routes/transactions.js delete <id>
 node src/routes/transactions.js delete <id> '{"update_future":true}'
 ```
 
-### Cartoes de credito
+### Credit Cards
 
 ```bash
 node src/routes/credit-cards.js list
@@ -83,18 +83,18 @@ node src/routes/credit-cards.js get-invoice <credit_card_id> <invoice_id>
 node src/routes/credit-cards.js get-payments <credit_card_id> <invoice_id>
 ```
 
-### Transferencias
+### Transfers
 
 ```bash
 node src/routes/transfers.js list
 node src/routes/transfers.js list --start-date=2026-04-01 --end-date=2026-04-30
 node src/routes/transfers.js get <id>
 node src/routes/transfers.js create '{"credit_account_id":3,"debit_account_id":4,"amount_cents":10000,"date":"2026-04-03","paid":true}'
-node src/routes/transfers.js update <id> '{"description":"Transferencia ajustada"}'
+node src/routes/transfers.js update <id> '{"description":"Adjusted transfer"}'
 node src/routes/transfers.js delete <id>
 ```
 
-## Estrutura
+## Structure
 
 ```
 src/
@@ -107,9 +107,9 @@ src/
     └── transfers.js
 ```
 
-Cada modulo em `src/routes/` pode ser usado de duas formas:
+Each module in `src/routes/` works in two modes:
 
-- **CLI** -- executado diretamente com `node src/routes/<resource>.js <action> [args]`
-- **Modulo** -- importado em outros scripts via `import { listAccounts } from './src/routes/accounts.js'`
+- **CLI** — run directly with `node src/routes/<resource>.js <action> [args]`
+- **Module** — imported in other scripts via `import { listAccounts } from './src/routes/accounts.js'`
 
-O output e sempre JSON no stdout. Erros vao para stderr com exit code 1.
+Output is always JSON on stdout. Errors go to stderr with exit code 1.
