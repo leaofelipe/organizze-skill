@@ -14,9 +14,6 @@ env:
   - name: ORGANIZZE_EMAIL
     description: Email address associated with the Organizze account (used as HTTP Basic Auth username)
     required: true
-  - name: ORGANIZZE_TOKEN
-    description: API token for authenticating with the Organizze REST API
-    required: true
   - name: ORGANIZZE_USER_AGENT
     description: Short string identifying the integration, required by the Organizze API
     required: true
@@ -25,6 +22,47 @@ env:
 # Organizze API (CLI scripts)
 
 Use the **organizze-skill** repository to read and write Organizze personal finance data through the official REST API. JSON is printed to stdout; errors go to stderr and the process exits non-zero on failure.
+
+## Before running anything
+
+Check whether the required credentials are available:
+
+```bash
+[[ -n "${ORGANIZZE_TOKEN:-}" && -n "${ORGANIZZE_EMAIL:-}" && -n "${ORGANIZZE_USER_AGENT:-}" ]] && echo "READY" || echo "MISSING"
+```
+
+- If the output is `MISSING`: stop and guide the user through setup below. Do NOT proceed until all variables are set.
+- If the output is `READY`: proceed.
+
+### Setup guidance (show this when MISSING)
+
+Tell the user they have two options:
+
+**Option 1 (recommended) — OpenClaw UI:**
+Open the OpenClaw UI, go to **Skills → organizze**, enter the API token in the **API key** field, and click **Save key**. Then set `ORGANIZZE_EMAIL` and `ORGANIZZE_USER_AGENT` as environment variables in the skill's env section.
+
+**Option 2 — Edit `~/.openclaw/openclaw.json` directly (for CLI users):**
+
+```json
+{
+  "skills": {
+    "entries": {
+      "organizze": {
+        "enabled": true,
+        "apiKey": "<your-organizze-token>",
+        "env": {
+          "ORGANIZZE_EMAIL": "your@email.com",
+          "ORGANIZZE_USER_AGENT": "my-organizze-skill"
+        }
+      }
+    }
+  }
+}
+```
+
+The gateway picks up the change automatically — no restart needed.
+
+The user can get their API token from the Organizze web app under **Configurações → Integrações → Token de API**.
 
 ## Working directory
 
