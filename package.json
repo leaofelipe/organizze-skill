@@ -1,6 +1,6 @@
 {
   "name": "organizze-skill",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Node.js scripts to interact with the Organizze API",
   "license": "MIT-0",
   "type": "module",
