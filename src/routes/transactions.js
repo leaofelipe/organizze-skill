@@ -1,5 +1,27 @@
 import { client } from '../client.js';
 
+function groupByTag(transactions) {
+  const map = new Map();
+
+  for (const tx of transactions) {
+    const tags = tx.tags?.length ? tx.tags.map((t) => t.name) : ['untagged'];
+    for (const tag of tags) {
+      if (!map.has(tag)) map.set(tag, []);
+      map.get(tag).push(tx);
+    }
+  }
+
+  return [...map.entries()]
+    .sort(([a], [b]) =>
+      a === 'untagged' ? 1 : b === 'untagged' ? -1 : a.localeCompare(b)
+    )
+    .map(([tag, txs]) => ({
+      tag,
+      total_cents: txs.reduce((sum, tx) => sum + tx.amount_cents, 0),
+      transactions: txs,
+    }));
+}
+
 export async function listTransactions({ startDate, endDate, accountId } = {}) {
   const params = new URLSearchParams();
   if (startDate) params.set('start_date', startDate);
@@ -38,11 +60,15 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   const startDate = parseFlag('--start-date');
   const endDate = parseFlag('--end-date');
   const accountId = parseFlag('--account-id');
+  const shouldGroupByTag = args.includes('--group-by-tag');
   const positional = args.filter((a) => !a.startsWith('--'));
   const [, arg1, arg2] = positional;
 
   const actions = {
-    list: () => listTransactions({ startDate, endDate, accountId }),
+    list: async () => {
+      const result = await listTransactions({ startDate, endDate, accountId });
+      return shouldGroupByTag ? groupByTag(result) : result;
+    },
     get: () => getTransaction(arg1),
     create: () => createTransaction(JSON.parse(arg1)),
     update: () => updateTransaction(arg1, JSON.parse(arg2)),
@@ -52,7 +78,7 @@ if (process.argv[1] === new URL(import.meta.url).pathname) {
   if (!action || !actions[action]) {
     console.error('Usage: node src/routes/transactions.js <action> [args]');
     console.error('Actions:');
-    console.error('  list [--start-date=YYYY-MM-DD] [--end-date=YYYY-MM-DD] [--account-id=<id>]');
+    console.error('  list [--start-date=YYYY-MM-DD] [--end-date=YYYY-MM-DD] [--account-id=<id>] [--group-by-tag]');
     console.error('  get <id>');
     console.error('  create <json>');
     console.error('  update <id> <json>');

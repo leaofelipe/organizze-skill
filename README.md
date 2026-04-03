@@ -59,6 +59,10 @@ node src/routes/transactions.js create '{"description":"Supermarket","amount_cen
 node src/routes/transactions.js update <id> '{"description":"Updated description"}'
 node src/routes/transactions.js delete <id>
 node src/routes/transactions.js delete <id> '{"update_future":true}'
+# extra: not a native Organizze API feature
+node src/routes/transactions.js list --group-by-tag
+node src/routes/transactions.js list --start-date=2026-04-01 --end-date=2026-04-30 --group-by-tag
+# a transaction with multiple tags appears in each matching group
 ```
 
 ### Credit Cards
