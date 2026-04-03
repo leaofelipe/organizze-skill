@@ -6,6 +6,20 @@ description: >-
   (invoices, payments), and transfers. Use when the user works with Organizze,
   budgets, expenses, income, categories, bank accounts, credit card bills,
   transfers, or asks to query or change their Organizze data through the terminal.
+credentials:
+  - name: ORGANIZZE_TOKEN
+    description: API token for authenticating with the Organizze REST API (used as HTTP Basic Auth password)
+    required: true
+env:
+  - name: ORGANIZZE_EMAIL
+    description: Email address associated with the Organizze account (used as HTTP Basic Auth username)
+    required: true
+  - name: ORGANIZZE_TOKEN
+    description: API token for authenticating with the Organizze REST API
+    required: true
+  - name: ORGANIZZE_USER_AGENT
+    description: Short string identifying the integration, required by the Organizze API
+    required: true
 ---
 
 # Organizze API (CLI scripts)
