@@ -6,7 +6,7 @@ description: >-
   (invoices, payments), and transfers. Use when the user works with Organizze,
   budgets, expenses, income, categories, bank accounts, credit card bills,
   transfers, or asks to query or change their Organizze data through the terminal.
-version: 1.3.3
+version: 1.3.4
 metadata:
   openclaw:
     requires:
