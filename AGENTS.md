@@ -30,8 +30,10 @@ Run any script without arguments to see its full usage.
 - `amount_cents` is always in cents (integer). R$ 50,00 = `5000`, expense = negative value.
 - Dates use `YYYY-MM-DD` format.
 - Transactions support `--start-date=`, `--end-date=`, `--account-id=` flags on `list`.
+- Transactions support `--group-by-tag` on `list` (local grouping, not a native API feature). Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
 - Deleting a recurring/installment transaction accepts `{"update_future":true}` or `{"update_all":true}` as the last argument.
 - Credit card invoices are under `credit-cards.js` using `list-invoices`, `get-invoice`, and `get-payments` actions.
+- `transfers list` returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object.
 
 ## Commits
 

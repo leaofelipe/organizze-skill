@@ -81,6 +81,8 @@ node src/routes/credit-cards.js get-payments <credit_card_id> <invoice_id>
 
 ### Transfers
 
+> `list` returns both sides of each transfer as separate transaction objects (debit and credit).
+
 ```bash
 node src/routes/transfers.js list
 node src/routes/transfers.js list --start-date=2026-04-01 --end-date=2026-04-30
