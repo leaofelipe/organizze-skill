@@ -6,6 +6,18 @@ description: >-
   (invoices, payments), and transfers. Use when the user works with Organizze,
   budgets, expenses, income, categories, bank accounts, credit card bills,
   transfers, or asks to query or change their Organizze data through the terminal.
+version: 1.3.3
+metadata:
+  openclaw:
+    requires:
+      env:
+        - ORGANIZZE_TOKEN
+        - ORGANIZZE_EMAIL
+        - ORGANIZZE_USER_AGENT
+      bins:
+        - node
+        - npm
+    primaryEnv: ORGANIZZE_TOKEN
 credentials:
   - name: ORGANIZZE_TOKEN
     description: API token for authenticating with the Organizze REST API (used as HTTP Basic Auth password)
