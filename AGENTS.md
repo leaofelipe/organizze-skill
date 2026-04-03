@@ -33,6 +33,16 @@ Run any script without arguments to see its full usage.
 - Deleting a recurring/installment transaction accepts `{"update_future":true}` or `{"update_all":true}` as the last argument.
 - Credit card invoices are under `credit-cards.js` using `list-invoices`, `get-invoice`, and `get-payments` actions.
 
+## Commits
+
+Follow conventional commits format:
+
+```
+type(scope): description
+```
+
+Examples: `feat(transactions): add list by account`, `fix(client): handle empty response body`, `docs(readme): update usage examples`
+
 ## API reference
 
 Full API docs: https://github.com/organizze/api-doc
