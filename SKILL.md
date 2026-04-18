@@ -1,117 +1,40 @@
----
-name: organizze
-description: >-
-  Runs Organizze personal finance API operations via Node.js CLI scripts:
-  accounts, categories, transactions (filters, tag grouping), credit cards
-  (invoices, payments), and transfers. Use when the user works with Organizze,
-  budgets, expenses, income, categories, bank accounts, credit card bills,
-  transfers, or asks to query or change their Organizze data through the terminal.
-version: 1.3.4
-metadata:
-  openclaw:
-    requires:
-      env:
-        - ORGANIZZE_TOKEN
-        - ORGANIZZE_EMAIL
-        - ORGANIZZE_USER_AGENT
-      bins:
-        - node
-        - npm
-    primaryEnv: ORGANIZZE_TOKEN
-credentials:
-  - name: ORGANIZZE_TOKEN
-    description: API token for authenticating with the Organizze REST API (used as HTTP Basic Auth password)
-    required: true
-env:
-  - name: ORGANIZZE_EMAIL
-    description: Email address associated with the Organizze account (used as HTTP Basic Auth username)
-    required: true
-  - name: ORGANIZZE_USER_AGENT
-    description: Short string identifying the integration, required by the Organizze API
-    required: true
----
+# Organizze API (MCP and CLI)
 
-# Organizze API (CLI scripts)
+Use this project to read and write Organizze personal finance data through the official REST API. Prefer **MCP tools** when the client exposes them (e.g. Claude Desktop). The same operations exist as **CLI scripts** for terminals and automation.
 
-Use the **organizze-skill** repository to read and write Organizze personal finance data through the official REST API. JSON is printed to stdout; errors go to stderr and the process exits non-zero on failure.
+## Credentials
 
-## Before running anything
+Required environment variables (never log or echo their values):
 
-Check whether the required credentials are available:
+- `ORGANIZZE_EMAIL` — Basic Auth username (Organizze account email)
+- `ORGANIZZE_TOKEN` — Basic Auth password (API token from Organizze settings)
+- `ORGANIZZE_USER_AGENT` — Short string identifying the integration (required by the API)
 
-```bash
-[[ -n "${ORGANIZZE_TOKEN:-}" && -n "${ORGANIZZE_EMAIL:-}" && -n "${ORGANIZZE_USER_AGENT:-}" ]] && echo "READY" || echo "MISSING"
-```
+If any are missing, stop and tell the user to configure them (Claude Desktop MCP `env` block, shell exports, or `.env` from `.env.example`).
 
-- If the output is `MISSING`: stop and guide the user through setup below. Do NOT proceed until all variables are set.
-- If the output is `READY`: proceed.
+Mask PII when summarizing API responses.
 
-### Setup guidance (show this when MISSING)
+## MCP tool names (quick map)
 
-Tell the user they have two options:
+| Area | MCP tools |
+|------|-----------|
+| Accounts | `list_accounts`, `get_account`, `create_account`, `update_account`, `delete_account` |
+| Categories | `list_categories`, `get_category`, `create_category`, `update_category`, `delete_category` |
+| Transactions | `list_transactions`, `get_transaction`, `create_transaction`, `update_transaction`, `delete_transaction` |
+| Credit cards | `list_credit_cards`, `get_credit_card`, `create_credit_card`, `update_credit_card`, `delete_credit_card`, `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments` |
+| Transfers | `list_transfers`, `get_transfer`, `create_transfer`, `update_transfer`, `delete_transfer` |
 
-**Option 1 (recommended) — OpenClaw UI:**
-Open the OpenClaw UI, go to **Skills → organizze**, enter the API token in the **API key** field, and click **Save key**. Then set `ORGANIZZE_EMAIL` and `ORGANIZZE_USER_AGENT` as environment variables in the skill's env section.
+`list_transactions` accepts optional `start_date`, `end_date`, `account_id`, and `group_by_tag` (boolean). When `group_by_tag` is true, results are grouped locally by tag (not a native Organizze API feature).
 
-**Option 2 — Edit `~/.openclaw/openclaw.json` directly (for CLI users):**
+## Key conventions
 
-```json
-{
-  "skills": {
-    "entries": {
-      "organizze": {
-        "enabled": true,
-        "apiKey": "<your-organizze-token>",
-        "env": {
-          "ORGANIZZE_EMAIL": "your@email.com",
-          "ORGANIZZE_USER_AGENT": "my-organizze-skill"
-        }
-      }
-    }
-  }
-}
-```
-
-The gateway picks up the change automatically — no restart needed.
-
-The user can get their API token from the Organizze web app under **Configurações → Integrações → Token de API**.
-
-## Working directory
-
-**Before every `node` command, set the shell working directory to the repository root** — the directory that contains `package.json`.
-
-## Prerequisites
-
-- Node.js 18 or newer
-- From the repository root: `npm install`
-- A `.env` file (copy from `.env.example`) with:
-  - `ORGANIZZE_EMAIL`
-  - `ORGANIZZE_TOKEN`
-  - `ORGANIZZE_USER_AGENT` (required by the API; any short string identifying your integration)
-
-Do not print or log credential values. Mask PII when summarizing API output for the user.
-
-## How to run
-
-```bash
-node src/routes/<resource>.js <action> [args]
-```
-
-`<resource>` is one of: `accounts`, `categories`, `transactions`, `credit-cards`, `transfers`.
-
-Run a script with no arguments to see its full usage on stderr.
-
-**Output:** pretty-printed JSON on stdout. **Errors:** message on stderr, exit `1`.
-
----
-
-## Conventions
-
-- **`amount_cents`:** integer cents. R$ 50.00 = `5000`. Expenses are negative.
-- **Dates:** `YYYY-MM-DD`.
-- **JSON arguments:** pass as a single quoted shell argument.
-- **`transactions list --group-by-tag`:** local grouping after the API response (not a native API feature). Returns `[{ tag, total_cents, transactions }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
-- **`transfers list`:** returns two entries per transfer (debit and credit sides), not one merged object.
+- **`amount_cents`:** always in cents (integer). R$ 50,00 = `5000`; expense = negative value.
+- **Dates:** `YYYY-MM-DD` format.
+- **Transactions — list filters:** CLI `list` supports `--start-date=`, `--end-date=`, `--account-id=`. MCP `list_transactions` uses `start_date`, `end_date`, `account_id` (same meaning).
+- **Transactions — group by tag:** CLI `--group-by-tag` on `list`; MCP `group_by_tag: true` on `list_transactions`. **Local grouping** after the API response (not a native API feature). Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
+- **Transactions — delete recurring/installment:** optional `{"update_future":true}` or `{"update_all":true}` (CLI: last JSON argument; MCP: `options` on `delete_transaction`).
+- **Credit card invoices:** in [`src/routes/credit-cards.js`](src/routes/credit-cards.js) as `list-invoices`, `get-invoice`, `get-payments`. MCP: `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments`.
+- **`transfers list` / `list_transfers`:** returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object.
 
 For field names and payloads not listed here, see: https://github.com/organizze/api-doc
 
@@ -119,97 +42,72 @@ For field names and payloads not listed here, see: https://github.com/organizze/
 
 ## accounts
 
-| Action   | Arguments |
-|----------|-----------|
-| `list`   | (none) |
-| `get`    | `<id>` |
-| `create` | `<json>` |
-| `update` | `<id>` `<json>` |
-| `delete` | `<id>` |
-
-```bash
-node src/routes/accounts.js list
-node src/routes/accounts.js get 12345
-```
+| Action | CLI | MCP tool |
+|--------|-----|----------|
+| list | `node src/routes/accounts.js list` | `list_accounts` |
+| get | `node src/routes/accounts.js get <id>` | `get_account` |
+| create | `node src/routes/accounts.js create '<json>'` | `create_account` |
+| update | `node src/routes/accounts.js update <id> '<json>'` | `update_account` |
+| delete | `node src/routes/accounts.js delete <id>` | `delete_account` |
 
 ---
 
 ## categories
 
-| Action   | Arguments |
-|----------|-----------|
-| `list`   | (none) |
-| `get`    | `<id>` |
-| `create` | `<json>` |
-| `update` | `<id>` `<json>` |
-| `delete` | `<id>` `[json]` |
+| Action | CLI | MCP tool |
+|--------|-----|----------|
+| list | `node src/routes/categories.js list` | `list_categories` |
+| get | `node src/routes/categories.js get <id>` | `get_category` |
+| create | `node src/routes/categories.js create '<json>'` | `create_category` |
+| update | `node src/routes/categories.js update <id> '<json>'` | `update_category` |
+| delete | `node src/routes/categories.js delete <id> [json]` | `delete_category` with optional `options` |
 
 `delete` accepts optional JSON with `replacement_id` to migrate existing references before removal.
-
-```bash
-node src/routes/categories.js list
-node src/routes/categories.js delete 42 '{"replacement_id":18}'
-```
 
 ---
 
 ## transactions
 
-| Action   | Arguments |
-|----------|-----------|
-| `list`   | Optional flags: `--start-date=YYYY-MM-DD`, `--end-date=YYYY-MM-DD`, `--account-id=<id>`, `--group-by-tag` |
-| `get`    | `<id>` |
-| `create` | `<json>` |
-| `update` | `<id>` `<json>` |
-| `delete` | `<id>` `[json]` |
+| Action | CLI | MCP tool |
+|--------|-----|----------|
+| list | `node src/routes/transactions.js list` + optional flags | `list_transactions` |
+| get | `node src/routes/transactions.js get <id>` | `get_transaction` |
+| create | `node src/routes/transactions.js create '<json>'` | `create_transaction` |
+| update | `node src/routes/transactions.js update <id> '<json>'` | `update_transaction` |
+| delete | `node src/routes/transactions.js delete <id> [json]` | `delete_transaction` with optional `options` |
 
-`delete` accepts optional JSON for recurring/installment behavior: `'{"update_future":true}'` or `'{"update_all":true}'`.
+CLI list flags: `--start-date=`, `--end-date=`, `--account-id=`, `--group-by-tag`. MCP: `start_date`, `end_date`, `account_id`, `group_by_tag`.
 
-```bash
-node src/routes/transactions.js list --start-date=2025-04-01 --end-date=2025-04-30
-node src/routes/transactions.js list --account-id=1 --group-by-tag
-node src/routes/transactions.js delete 888 '{"update_future":true}'
-```
+`delete` accepts optional JSON for recurring/installment behavior: `{"update_future":true}` or `{"update_all":true}`.
 
 ---
 
 ## credit-cards
 
-| Action           | Arguments |
-|------------------|-----------|
-| `list`           | (none) |
-| `get`            | `<id>` |
-| `create`         | `<json>` |
-| `update`         | `<id>` `<json>` |
-| `delete`         | `<id>` |
-| `list-invoices`  | `<credit_card_id>` optional `--start-date=...` `--end-date=...` |
-| `get-invoice`    | `<credit_card_id>` `<invoice_id>` |
-| `get-payments`   | `<credit_card_id>` `<invoice_id>` |
-
-```bash
-node src/routes/credit-cards.js list
-node src/routes/credit-cards.js list-invoices 3 --start-date=2025-01-01 --end-date=2025-12-31
-node src/routes/credit-cards.js get-payments 3 1001
-```
+| Action | CLI | MCP tool |
+|--------|-----|----------|
+| list | `node src/routes/credit-cards.js list` | `list_credit_cards` |
+| get | `node src/routes/credit-cards.js get <id>` | `get_credit_card` |
+| create | `node src/routes/credit-cards.js create '<json>'` | `create_credit_card` |
+| update | `node src/routes/credit-cards.js update <id> '<json>'` | `update_credit_card` |
+| delete | `node src/routes/credit-cards.js delete <id>` | `delete_credit_card` |
+| list-invoices | `node src/routes/credit-cards.js list-invoices <cc_id> [--start-date=...]` | `list_credit_card_invoices` |
+| get-invoice | `node src/routes/credit-cards.js get-invoice <cc_id> <invoice_id>` | `get_credit_card_invoice` |
+| get-payments | `node src/routes/credit-cards.js get-payments <cc_id> <invoice_id>` | `get_credit_card_invoice_payments` |
 
 ---
 
 ## transfers
 
-| Action   | Arguments |
-|----------|-----------|
-| `list`   | Optional `--start-date=YYYY-MM-DD` `--end-date=YYYY-MM-DD` |
-| `get`    | `<id>` |
-| `create` | `<json>` |
-| `update` | `<id>` `<json>` |
-| `delete` | `<id>` |
+| Action | CLI | MCP tool |
+|--------|-----|----------|
+| list | `node src/routes/transfers.js list` + optional date flags | `list_transfers` |
+| get | `node src/routes/transfers.js get <id>` | `get_transfer` |
+| create | `node src/routes/transfers.js create '<json>'` | `create_transfer` |
+| update | `node src/routes/transfers.js update <id> '<json>'` | `update_transfer` |
+| delete | `node src/routes/transfers.js delete <id>` | `delete_transfer` |
 
 Typical `create` fields: `credit_account_id`, `debit_account_id`, `amount_cents`, `date`, `paid`. Confirm exact shape via the API doc or by inspecting existing transfers.
-
-```bash
-node src/routes/transfers.js list --start-date=2025-04-01 --end-date=2025-04-30
-node src/routes/transfers.js get 55
-```
 
 ---
 
@@ -217,33 +115,18 @@ node src/routes/transfers.js get 55
 
 ### Balances
 
-```bash
-node src/routes/accounts.js list
-```
+- MCP: `list_accounts`
+- CLI: `node src/routes/accounts.js list`
 
 ### Transactions for a period, filtered by account
 
-```bash
-# 1. get account id
-node src/routes/accounts.js list
-
-# 2. list transactions
-node src/routes/transactions.js list --start-date=2025-04-01 --end-date=2025-04-30 --account-id=1
-```
+1. `list_accounts` (or categories) to resolve ids.
+2. `list_transactions` with `start_date`, `end_date`, `account_id`.
 
 ### Create an expense
 
-```bash
-node src/routes/transactions.js create \
-  '{"description":"Coffee","amount_cents":-1500,"date":"2025-04-03","category_id":10,"account_id":1}'
-```
-
-Use negative `amount_cents`. Get `category_id` and `account_id` from prior `list` calls. Adjust fields to match the API.
+`create_transaction` with `data` including negative `amount_cents`, `description`, `date`, `category_id`, `account_id` as required by the API.
 
 ### Spending by tag
 
-```bash
-node src/routes/transactions.js list --start-date=2025-04-01 --end-date=2025-04-30 --group-by-tag
-```
-
-Each group in the result has `tag` and `total_cents`.
+`list_transactions` with `start_date`, `end_date`, and `group_by_tag: true`. Each group has `tag` and `total_cents`.

@@ -2,71 +2,74 @@
 
 ## What this project does
 
-Node.js scripts to read and write data from the Organizze personal finance API. Each script in `src/routes/` maps to one API resource and outputs JSON to stdout.
+- **MCP server** ([`src/server.js`](src/server.js)): stdio transport for Claude Desktop (and other MCP clients). Exposes Organizze API operations as tools; responses are JSON in tool result text.
+- **CLI** ([`src/routes/*.js`](src/routes/)): same operations via `node src/routes/<resource>.js <action> [args]`; JSON on stdout.
 
-## Setup check
+Shared HTTP layer: [`src/client.js`](src/client.js). Auth and env loading: [`src/credentials.js`](src/credentials.js).
 
-Before running any script, verify `.env` exists with:
-- `ORGANIZZE_EMAIL`
-- `ORGANIZZE_TOKEN`
-- `ORGANIZZE_USER_AGENT`
+## Credentials
 
-If missing, instruct the user to copy `.env.example` and fill in their credentials.
+Required: `ORGANIZZE_EMAIL`, `ORGANIZZE_TOKEN`, `ORGANIZZE_USER_AGENT`.
 
-## Running scripts
+- **MCP:** set `env` on the server entry in `claude_desktop_config.json` (or your client’s equivalent).
+- **CLI / dev:** `.env` from [`.env.example`](.env.example) is loaded automatically when the file exists at the repo root.
+
+If missing, tell the user to configure credentials before calling the API.
+
+## Running the MCP server locally
 
 ```bash
-node src/routes/<resource>.js <action> [args]
+npm install
+ORGANIZZE_EMAIL=... ORGANIZZE_TOKEN=... ORGANIZZE_USER_AGENT=... npm run mcp
 ```
 
-Available resources: `accounts`, `categories`, `transactions`, `credit-cards`, `transfers`
+Or: `node src/server.js` (same). Do not write logs to **stdout** (stdio is the MCP wire). Use **stderr** only if you must log.
 
-Common actions: `list`, `get <id>`, `create <json>`, `update <id> <json>`, `delete <id>`
+### Claude Desktop (macOS)
 
-Run any script without arguments to see its full usage.
+Add under `mcpServers` in `~/Library/Application Support/Claude/claude_desktop_config.json` (adjust paths and use your Node binary if needed):
+
+```json
+{
+  "mcpServers": {
+    "organizze": {
+      "command": "node",
+      "args": ["/absolute/path/to/organizze-skill/src/server.js"],
+      "env": {
+        "ORGANIZZE_EMAIL": "your@email.com",
+        "ORGANIZZE_TOKEN": "your-api-token",
+        "ORGANIZZE_USER_AGENT": "organizze-mcp"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Desktop after changing the config.
 
 ## Key conventions
 
+These rules apply to **both** MCP tools and CLI scripts (see [`SKILL.md`](SKILL.md) for tool names, tables, and workflows).
+
 - `amount_cents` is always in cents (integer). R$ 50,00 = `5000`, expense = negative value.
 - Dates use `YYYY-MM-DD` format.
-- Transactions support `--start-date=`, `--end-date=`, `--account-id=` flags on `list`.
-- Transactions support `--group-by-tag` on `list` (local grouping, not a native API feature). Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
-- Deleting a recurring/installment transaction accepts `{"update_future":true}` or `{"update_all":true}` as the last argument.
-- Credit card invoices are under `credit-cards.js` using `list-invoices`, `get-invoice`, and `get-payments` actions.
-- `transfers list` returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object.
+- **Transactions — list filters:** CLI uses `--start-date=`, `--end-date=`, `--account-id=` on `list`. MCP `list_transactions` uses `start_date`, `end_date`, `account_id` (same semantics).
+- **Transactions — group by tag:** CLI: `--group-by-tag` on `list`. MCP: `group_by_tag: true` on `list_transactions`. This is **local grouping** after the API response, not a native Organizze API feature. Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each matching group; untagged ones go into `"untagged"`.
+- **Transactions — delete recurring/installment:** optional body `{"update_future":true}` or `{"update_all":true}` (CLI: last JSON argument; MCP: `options` on `delete_transaction`).
+- **Credit card invoices:** exposed as `list-invoices`, `get-invoice`, and `get-payments` in [`src/routes/credit-cards.js`](src/routes/credit-cards.js). MCP equivalents: `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments`.
+- **`transfers` list:** returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object. Same for MCP `list_transfers`.
+
+## Development
+
+- Node **>= 18** (ESM, native `fetch`).
+- New API surface: add a function in the right `src/routes/*.js`, wire it in [`src/server.js`](src/server.js) with `registerTool` + Zod `inputSchema`, and document in [`SKILL.md`](SKILL.md).
+- Keep tool descriptions accurate; they drive LLM tool choice.
 
 ## Commits
 
-Follow conventional commits format:
-
-```
-type(scope): description
-```
-
-Examples: `feat(transactions): add list by account`, `fix(client): handle empty response body`, `docs(readme): update usage examples`
-
-## Publishing to ClawHub
-
-Use the `clawhub` CLI (via `npx clawhub`) to publish the skill.
-
-### Publish
-
-```bash
-npx clawhub publish . --slug organizze-skill --version <semver>
-```
-
-Run from the repository root. The `<path>` argument points to the folder containing `SKILL.md`.
-
-- `--slug`: must be `organizze-skill`
-- `--version`: semver (e.g. `1.2.1`). The registry rejects versions that already exist — bump before publishing.
-- `--changelog`: optional description of what changed (e.g. `--changelog "add transfers date filters"`)
-
-### Example
-
-```bash
-npx clawhub publish . --slug organizze-skill --version 1.2.1 --changelog "fix: update setup instructions"
-```
+Conventional commits: `type(scope): description`  
+Examples: `feat(mcp): add budgets tool`, `fix(client): handle empty body`
 
 ## API reference
 
-Full API docs: https://github.com/organizze/api-doc
+https://github.com/organizze/api-doc

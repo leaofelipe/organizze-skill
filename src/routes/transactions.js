@@ -47,6 +47,11 @@ export async function deleteTransaction(id, data) {
   return client.del(`/transactions/${id}`, data);
 }
 
+/** List transactions then group by tag (local aggregation; not a native API feature). */
+export async function listTransactionsGrouped(filters = {}) {
+  return groupByTag(await listTransactions(filters));
+}
+
 // CLI
 if (process.argv[1] === new URL(import.meta.url).pathname) {
   const args = process.argv.slice(2);
