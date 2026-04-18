@@ -1,182 +1,165 @@
-# Organizze API (MCP and CLI)
+---
+name: organizze
+description: Read and write Organizze personal finance data using MCP tools available in Claude Desktop. Use this skill whenever the user wants to check balances, list transactions, create expenses, manage credit cards, transfers, categories, or any other personal finance operation in Organizze. Trigger for queries like "quanto gastei", "lança uma despesa", "qual meu saldo", "extrato do mês", "fatura do cartão", or any mention of Organizze, transactions, accounts, or personal finance data.
+---
 
-Use this project to read and write Organizze personal finance data through the official REST API. Prefer **MCP tools** when the client exposes them (e.g. Claude Desktop). The same operations exist as **CLI scripts** for terminals and automation.
+# Organizze (Claude Desktop via MCP)
 
-## Credentials
+Use the MCP tools exposed by the Organizze MCP server to read and write personal finance data.
 
-Required environment variables (never log or echo their values):
+## Setup (one-time)
 
-- `ORGANIZZE_EMAIL` — Basic Auth username (Organizze account email)
-- `ORGANIZZE_TOKEN` — Basic Auth password (API token from Organizze settings)
-- `ORGANIZZE_USER_AGENT` — Short string identifying the integration (required by the API)
+The MCP server must be configured in `claude_desktop_config.json`:
 
-If any are missing, stop and tell the user to configure them (Claude Desktop MCP `env` block, shell exports, or `.env` from `.env.example`).
+```json
+{
+  "mcpServers": {
+    "organizze": {
+      "command": "node",
+      "args": ["/path/to/organizze-skill/src/index.js"],
+      "env": {
+        "ORGANIZZE_EMAIL": "seu@email.com",
+        "ORGANIZZE_TOKEN": "seu-token",
+        "ORGANIZZE_USER_AGENT": "claude-desktop"
+      }
+    }
+  }
+}
+```
 
-Mask PII when summarizing API responses.
-
-## MCP tool names (quick map)
-
-| Area | MCP tools |
-|------|-----------|
-| Accounts | `list_accounts`, `get_account`, `create_account`, `update_account`, `delete_account` |
-| Categories | `list_categories`, `get_category`, `create_category`, `update_category`, `delete_category` |
-| Transactions | `list_transactions`, `get_transaction`, `create_transaction`, `update_transaction`, `delete_transaction` |
-| Credit cards | `list_credit_cards`, `get_credit_card`, `create_credit_card`, `update_credit_card`, `delete_credit_card`, `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments` |
-| Transfers | `list_transfers`, `get_transfer`, `create_transfer`, `update_transfer`, `delete_transfer` |
-
-`list_transactions` accepts optional `start_date`, `end_date`, `account_id`, and `group_by_tag` (boolean). When `group_by_tag` is true, results are grouped locally by tag (not a native Organizze API feature).
+If tools are unavailable, ask the user to check the MCP server config and restart Claude Desktop.
 
 ## Key conventions
 
-- **`amount_cents`:** always in cents (integer). R$ 50,00 = `5000`; expense = negative value.
-- **Dates:** `YYYY-MM-DD` format.
-- **Transactions — list filters:** CLI `list` supports `--start-date=`, `--end-date=`, `--account-id=`. MCP `list_transactions` uses `start_date`, `end_date`, `account_id` (same meaning).
-- **Transactions — group by tag:** CLI `--group-by-tag` on `list`; MCP `group_by_tag: true` on `list_transactions`. **Local grouping** after the API response (not a native API feature). Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
-- **Transactions — installments (parcelamento):** include `installments_attributes: { periodicity, total }` in `create_transaction` data. Periodicity: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`. Creates all installments; each has `total_installments` and `installment` (1-based).
-- **Transactions — fixed recurring:** include `recurrence_attributes: { periodicity }` in `create_transaction` data. Same periodicity values.
-- **Transactions — tags:** include `tags` as `[{"name": "tag_name"}]` in create or update. Tags are returned in responses.
-- **Transactions — update recurring/installment:** include `update_future: true` in data to update this and future occurrences, or `update_all: true` for all (may affect balance).
-- **Transactions — delete recurring/installment:** optional `{"update_future":true}` or `{"update_all":true}` (CLI: last JSON argument; MCP: `options` on `delete_transaction`).
-- **Credit card invoices:** in [`src/routes/credit-cards.js`](src/routes/credit-cards.js) as `list-invoices`, `get-invoice`, `get-payments`. MCP: `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments`.
-- **`transfers list` / `list_transfers`:** returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object.
+- **`amount_cents`**: always integers in cents. R$ 50,00 = `5000`. Expenses = negative value.
+- **Dates**: `YYYY-MM-DD`
+- **Tags**: array of `{ "name": "tag_name" }` objects
 
-For field names and payloads not listed here, see: https://github.com/organizze/api-doc
+## Available MCP tools
 
----
+### Accounts
 
-## accounts
+| Tool             | Purpose                         |
+| ---------------- | ------------------------------- |
+| `list_accounts`  | List all accounts with balances |
+| `get_account`    | Get a single account by id      |
+| `create_account` | Create account                  |
+| `update_account` | Update account                  |
+| `delete_account` | Delete account                  |
 
-| Action | CLI | MCP tool |
-|--------|-----|----------|
-| list | `node src/routes/accounts.js list` | `list_accounts` |
-| get | `node src/routes/accounts.js get <id>` | `get_account` |
-| create | `node src/routes/accounts.js create '<json>'` | `create_account` |
-| update | `node src/routes/accounts.js update <id> '<json>'` | `update_account` |
-| delete | `node src/routes/accounts.js delete <id>` | `delete_account` |
+### Transactions
 
----
+| Tool                 | Purpose                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------- |
+| `list_transactions`  | List transactions (supports `start_date`, `end_date`, `account_id`, `group_by_tag`) |
+| `get_transaction`    | Get a single transaction                                                            |
+| `create_transaction` | Create expense, income, installment, or recurring                                   |
+| `update_transaction` | Update transaction (use `update_future: true` or `update_all: true` for recurring)  |
+| `delete_transaction` | Delete transaction (same options for recurring)                                     |
 
-## categories
+### Categories
 
-| Action | CLI | MCP tool |
-|--------|-----|----------|
-| list | `node src/routes/categories.js list` | `list_categories` |
-| get | `node src/routes/categories.js get <id>` | `get_category` |
-| create | `node src/routes/categories.js create '<json>'` | `create_category` |
-| update | `node src/routes/categories.js update <id> '<json>'` | `update_category` |
-| delete | `node src/routes/categories.js delete <id> [json]` | `delete_category` with optional `options` |
+| Tool              | Purpose                                                 |
+| ----------------- | ------------------------------------------------------- |
+| `list_categories` | List all categories                                     |
+| `get_category`    | Get a single category                                   |
+| `create_category` | Create category                                         |
+| `update_category` | Update category                                         |
+| `delete_category` | Delete (accepts `replacement_id` to migrate references) |
 
-`delete` accepts optional JSON with `replacement_id` to migrate existing references before removal.
+### Credit Cards
 
----
+| Tool                               | Purpose                                          |
+| ---------------------------------- | ------------------------------------------------ |
+| `list_credit_cards`                | List cards                                       |
+| `get_credit_card`                  | Get a single card                                |
+| `create_credit_card`               | Create card                                      |
+| `update_credit_card`               | Update card                                      |
+| `delete_credit_card`               | Delete card                                      |
+| `list_credit_card_invoices`        | List invoices for a card (optional `start_date`) |
+| `get_credit_card_invoice`          | Get a specific invoice                           |
+| `get_credit_card_invoice_payments` | Get payments for an invoice                      |
 
-## transactions
+### Transfers
 
-| Action | CLI | MCP tool |
-|--------|-----|----------|
-| list | `node src/routes/transactions.js list` + optional flags | `list_transactions` |
-| get | `node src/routes/transactions.js get <id>` | `get_transaction` |
-| create | `node src/routes/transactions.js create '<json>'` | `create_transaction` |
-| update | `node src/routes/transactions.js update <id> '<json>'` | `update_transaction` |
-| delete | `node src/routes/transactions.js delete <id> [json]` | `delete_transaction` with optional `options` |
+| Tool              | Purpose                                                     |
+| ----------------- | ----------------------------------------------------------- |
+| `list_transfers`  | List transfers (returns debit + credit as separate objects) |
+| `get_transfer`    | Get a single transfer                                       |
+| `create_transfer` | Create transfer between accounts                            |
+| `update_transfer` | Update transfer                                             |
+| `delete_transfer` | Delete transfer                                             |
 
-CLI list flags: `--start-date=`, `--end-date=`, `--account-id=`, `--group-by-tag`. MCP: `start_date`, `end_date`, `account_id`, `group_by_tag`.
+## Common workflows
 
-`delete` accepts optional JSON for recurring/installment behavior: `{"update_future":true}` or `{"update_all":true}`.
+### Check balances
 
----
+Call `list_accounts`. Present account names and `current_balance_cents / 100` formatted as BRL.
 
-## credit-cards
+### Transactions for a period
 
-| Action | CLI | MCP tool |
-|--------|-----|----------|
-| list | `node src/routes/credit-cards.js list` | `list_credit_cards` |
-| get | `node src/routes/credit-cards.js get <id>` | `get_credit_card` |
-| create | `node src/routes/credit-cards.js create '<json>'` | `create_credit_card` |
-| update | `node src/routes/credit-cards.js update <id> '<json>'` | `update_credit_card` |
-| delete | `node src/routes/credit-cards.js delete <id>` | `delete_credit_card` |
-| list-invoices | `node src/routes/credit-cards.js list-invoices <cc_id> [--start-date=...]` | `list_credit_card_invoices` |
-| get-invoice | `node src/routes/credit-cards.js get-invoice <cc_id> <invoice_id>` | `get_credit_card_invoice` |
-| get-payments | `node src/routes/credit-cards.js get-payments <cc_id> <invoice_id>` | `get_credit_card_invoice_payments` |
+1. `list_accounts` or `list_categories` to resolve ids if needed
+2. `list_transactions` with `start_date` and `end_date`
 
----
+### Create a simple expense
 
-## transfers
+```json
+{
+  "description": "Almoço",
+  "amount_cents": -3500,
+  "date": "2025-04-18",
+  "account_id": 123,
+  "category_id": 456
+}
+```
 
-| Action | CLI | MCP tool |
-|--------|-----|----------|
-| list | `node src/routes/transfers.js list` + optional date flags | `list_transfers` |
-| get | `node src/routes/transfers.js get <id>` | `get_transfer` |
-| create | `node src/routes/transfers.js create '<json>'` | `create_transfer` |
-| update | `node src/routes/transfers.js update <id> '<json>'` | `update_transfer` |
-| delete | `node src/routes/transfers.js delete <id>` | `delete_transfer` |
-
-Typical `create` fields: `credit_account_id`, `debit_account_id`, `amount_cents`, `date`, `paid`. Confirm exact shape via the API doc or by inspecting existing transfers.
-
----
-
-## End-to-end workflows
-
-### Balances
-
-- MCP: `list_accounts`
-- CLI: `node src/routes/accounts.js list`
-
-### Transactions for a period, filtered by account
-
-1. `list_accounts` (or categories) to resolve ids.
-2. `list_transactions` with `start_date`, `end_date`, `account_id`.
-
-### Create an expense
-
-`create_transaction` with `data` including negative `amount_cents`, `description`, `date`, `category_id`, `account_id` as required by the API.
-
-### Create an installment expense (parcelamento)
-
-`create_transaction` with `data` including `installments_attributes: { periodicity, total }`. Example: 12x monthly installment of R$ 100:
+### Create installment expense (parcelamento)
 
 ```json
 {
   "description": "Notebook",
   "amount_cents": -10000,
-  "date": "2025-01-15",
-  "account_id": 3,
-  "category_id": 21,
+  "date": "2025-04-01",
+  "account_id": 123,
+  "category_id": 456,
   "installments_attributes": { "periodicity": "monthly", "total": 12 }
 }
 ```
 
-Periodicity values: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`.
+Periodicity values: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`
 
-The API creates all installments at once. Each occurrence has `total_installments` and `installment` (1-based index).
-
-### Create a fixed recurring transaction
-
-`create_transaction` with `data` including `recurrence_attributes: { periodicity }`. Example:
+### Create fixed recurring transaction
 
 ```json
 {
   "description": "Aluguel",
   "amount_cents": -200000,
-  "date": "2025-01-05",
-  "account_id": 3,
-  "category_id": 10,
+  "date": "2025-04-05",
+  "account_id": 123,
+  "category_id": 789,
   "recurrence_attributes": { "periodicity": "monthly" }
 }
 ```
 
-Same periodicity values as installments.
-
-### Tagging transactions
-
-Include `tags` as an array of `{ name }` objects in `create_transaction` or `update_transaction`:
-
-```json
-{ "tags": [{"name": "homeoffice"}, {"name": "work"}] }
-```
-
-Tags are returned in the transaction response. Use `group_by_tag` on `list_transactions` to aggregate by tag.
-
 ### Spending by tag
 
-`list_transactions` with `start_date`, `end_date`, and `group_by_tag: true`. Each group has `tag` and `total_cents`.
+`list_transactions` with `start_date`, `end_date`, and `group_by_tag: true`. Returns `[{ tag, total_cents, transactions[] }]`.
+
+### Transfer between accounts
+
+```json
+{
+  "credit_account_id": 1,
+  "debit_account_id": 2,
+  "amount_cents": 50000,
+  "date": "2025-04-18",
+  "paid": true
+}
+```
+
+## Output guidelines
+
+- Format currency as **R$ X.XXX,XX** (Brazilian format)
+- Mask sensitive data (full account numbers, tokens) in summaries
+- For list responses, prefer compact tables over raw JSON
+- When resolving names to IDs (e.g. "conta Nubank"), call the list tool first, match by name, then proceed
