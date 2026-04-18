@@ -55,6 +55,10 @@ These rules apply to **both** MCP tools and CLI scripts (see [`SKILL.md`](SKILL.
 - Dates use `YYYY-MM-DD` format.
 - **Transactions — list filters:** CLI uses `--start-date=`, `--end-date=`, `--account-id=` on `list`. MCP `list_transactions` uses `start_date`, `end_date`, `account_id` (same semantics).
 - **Transactions — group by tag:** CLI: `--group-by-tag` on `list`. MCP: `group_by_tag: true` on `list_transactions`. This is **local grouping** after the API response, not a native Organizze API feature. Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each matching group; untagged ones go into `"untagged"`.
+- **Transactions — installments (parcelamento):** include `installments_attributes: { periodicity, total }` in `create_transaction` data. Periodicity values: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`. Creates all N installments at once; each has `total_installments` and `installment` (1-based index).
+- **Transactions — fixed recurring:** include `recurrence_attributes: { periodicity }` in `create_transaction` data. Same periodicity values.
+- **Transactions — tags:** include `tags` as `[{"name": "tag_name"}]` in create/update body. Tags appear in responses and power the `group_by_tag` aggregation.
+- **Transactions — update recurring/installment:** include `update_future: true` in data to update this and future occurrences, or `update_all: true` for all (may change balance if past ones are paid).
 - **Transactions — delete recurring/installment:** optional body `{"update_future":true}` or `{"update_all":true}` (CLI: last JSON argument; MCP: `options` on `delete_transaction`).
 - **Credit card invoices:** exposed as `list-invoices`, `get-invoice`, and `get-payments` in [`src/routes/credit-cards.js`](src/routes/credit-cards.js). MCP equivalents: `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments`.
 - **`transfers` list:** returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object. Same for MCP `list_transfers`.

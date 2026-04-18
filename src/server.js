@@ -180,7 +180,11 @@ mcpServer.registerTool(
   'create_transaction',
   {
     description:
-      'Create a transaction. amount_cents: integer cents; expenses negative. date: YYYY-MM-DD.',
+      'Create a transaction. amount_cents: integer cents; expenses negative. date: YYYY-MM-DD. ' +
+      'For installments (parcelamento): include installments_attributes: { periodicity, total } (e.g. { "periodicity": "monthly", "total": 12 }). ' +
+      'For fixed recurring: include recurrence_attributes: { periodicity } (e.g. { "periodicity": "monthly" }). ' +
+      'Periodicity values: monthly, yearly, weekly, biweekly, bimonthly, trimonthly. ' +
+      'Tags: include tags as array of { name } objects (e.g. [{"name": "homeoffice"}]).',
     inputSchema: { data: jsonData },
   },
   async ({ data }) => textJson(await createTransaction(data)),
@@ -189,7 +193,10 @@ mcpServer.registerTool(
 mcpServer.registerTool(
   'update_transaction',
   {
-    description: 'Update a transaction.',
+    description:
+      'Update a transaction. ' +
+      'Tags: include tags as array of { name } objects (e.g. [{"name": "via_api"}]). ' +
+      'For recurring/installment: set update_future: true to update this and future occurrences, or update_all: true for all occurrences (may affect balance if past ones are paid).',
     inputSchema: { id: z.string(), data: jsonData },
   },
   async ({ id, data }) => textJson(await updateTransaction(id, data)),

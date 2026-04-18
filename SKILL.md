@@ -32,6 +32,10 @@ Mask PII when summarizing API responses.
 - **Dates:** `YYYY-MM-DD` format.
 - **Transactions — list filters:** CLI `list` supports `--start-date=`, `--end-date=`, `--account-id=`. MCP `list_transactions` uses `start_date`, `end_date`, `account_id` (same meaning).
 - **Transactions — group by tag:** CLI `--group-by-tag` on `list`; MCP `group_by_tag: true` on `list_transactions`. **Local grouping** after the API response (not a native API feature). Returns `[{ tag, total_cents, transactions[] }]`. Transactions with multiple tags appear in each group; untagged ones go into `"untagged"`.
+- **Transactions — installments (parcelamento):** include `installments_attributes: { periodicity, total }` in `create_transaction` data. Periodicity: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`. Creates all installments; each has `total_installments` and `installment` (1-based).
+- **Transactions — fixed recurring:** include `recurrence_attributes: { periodicity }` in `create_transaction` data. Same periodicity values.
+- **Transactions — tags:** include `tags` as `[{"name": "tag_name"}]` in create or update. Tags are returned in responses.
+- **Transactions — update recurring/installment:** include `update_future: true` in data to update this and future occurrences, or `update_all: true` for all (may affect balance).
 - **Transactions — delete recurring/installment:** optional `{"update_future":true}` or `{"update_all":true}` (CLI: last JSON argument; MCP: `options` on `delete_transaction`).
 - **Credit card invoices:** in [`src/routes/credit-cards.js`](src/routes/credit-cards.js) as `list-invoices`, `get-invoice`, `get-payments`. MCP: `list_credit_card_invoices`, `get_credit_card_invoice`, `get_credit_card_invoice_payments`.
 - **`transfers list` / `list_transfers`:** returns both sides of each transfer as separate transaction objects (debit and credit), not a single transfer object.
@@ -126,6 +130,52 @@ Typical `create` fields: `credit_account_id`, `debit_account_id`, `amount_cents`
 ### Create an expense
 
 `create_transaction` with `data` including negative `amount_cents`, `description`, `date`, `category_id`, `account_id` as required by the API.
+
+### Create an installment expense (parcelamento)
+
+`create_transaction` with `data` including `installments_attributes: { periodicity, total }`. Example: 12x monthly installment of R$ 100:
+
+```json
+{
+  "description": "Notebook",
+  "amount_cents": -10000,
+  "date": "2025-01-15",
+  "account_id": 3,
+  "category_id": 21,
+  "installments_attributes": { "periodicity": "monthly", "total": 12 }
+}
+```
+
+Periodicity values: `monthly`, `yearly`, `weekly`, `biweekly`, `bimonthly`, `trimonthly`.
+
+The API creates all installments at once. Each occurrence has `total_installments` and `installment` (1-based index).
+
+### Create a fixed recurring transaction
+
+`create_transaction` with `data` including `recurrence_attributes: { periodicity }`. Example:
+
+```json
+{
+  "description": "Aluguel",
+  "amount_cents": -200000,
+  "date": "2025-01-05",
+  "account_id": 3,
+  "category_id": 10,
+  "recurrence_attributes": { "periodicity": "monthly" }
+}
+```
+
+Same periodicity values as installments.
+
+### Tagging transactions
+
+Include `tags` as an array of `{ name }` objects in `create_transaction` or `update_transaction`:
+
+```json
+{ "tags": [{"name": "homeoffice"}, {"name": "work"}] }
+```
+
+Tags are returned in the transaction response. Use `group_by_tag` on `list_transactions` to aggregate by tag.
 
 ### Spending by tag
 
